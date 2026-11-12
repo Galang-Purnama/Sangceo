@@ -1,7 +1,17 @@
 name: Penjaga PR
 
-# Lapisan ketiga: memeriksa seluruh PR terbuka secara berkala, jadi tidak bergantung
-# pada run workflow dari fork (yang butuh persetujuan untuk akun baru ke GitHub).
+# Satu-satunya jalur yang mengomentari, menutup, dan meng-merge PR.
+#
+# Workflow yang dipicu pull_request dari fork selalu menerima token baca-saja,
+# sekalipun `permissions:` menulis `write` dan setelan repo juga `write`. Log run
+# membuktikannya: "Contents: read / Issues: read / PullRequests: read". Akibatnya
+# setiap PR dari kontributor baru menggantung tanpa komentar dan tanpa merge.
+#
+# Pemicu di sini sengaja bukan pull_request, melainkan jadwal dan workflow_dispatch.
+# Keduanya berjalan di repo ini dengan izin penuh, dan tidak ada kode atau skrip dari
+# fork yang ikut dijalankan. Run yang dipicu jadwal juga tidak pernah berstatus
+# "action_required", jadi tidak ada lagi tombol approve yang harus ditekan pemilik
+# repo. PR baru ditangani paling lama tiga menit setelah dibuka.
 on:
   schedule:
     - cron: "*/3 * * * *"
@@ -28,5 +38,6 @@ jobs:
           node-version: 22
       - name: Periksa dan bereskan PR terbuka
         env:
-          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+          # Token bawaan GitHub, bukan secret. gh membacanya dari GH_TOKEN.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/jaga-pr.sh

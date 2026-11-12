@@ -8,6 +8,14 @@
 #   2. Semua berkas yang berubah ada di data/domains/ atau data/emails/.
 #   3. Field domain, subdomain, owner, address tidak berubah dari versi main.
 #   4. `owner` di setiap berkas sama persis dengan penulis PR. Tanpa pengecualian.
+#   5. Akun penulis memang ada di GitHub.
+#
+# Dijalankan oleh pr-jaga.yml lewat jadwal dan workflow_dispatch, TIDAK lewat
+# pull_request. Bukan selera: workflow yang dipicu pull_request dari fork selalu
+# menerima token baca-saja, sekalipun `permissions:` menulis `write` dan setelan repo
+# juga `write`. Log run membuktikannya: "Contents: read / Issues: read /
+# PullRequests: read". Dengan izin itu bot tidak bisa berkomentar, menutup, apalagi
+# merge, sehingga setiap PR dari kontributor baru menggantung tanpa penjelasan.
 set -u
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
@@ -28,6 +36,12 @@ sudah_komentar() {
   gh pr view "$1" --json comments -q '.comments[].body' 2>/dev/null | grep -qF "$2"
 }
 
+# Akun palsu atau yang sudah dihapus tidak boleh lolos hanya karena namanya sama
+# dengan yang tercatat sebagai owner.
+akun_ada() {
+  [ -n "$1" ] && gh api "users/$1" --jq .login >/dev/null 2>&1
+}
+
 mapfile -t DAFTAR < <(gh pr list --state open --limit 100 --json number -q '.[].number' 2>/dev/null)
 echo "PR terbuka: ${#DAFTAR[@]}"
 
@@ -38,6 +52,13 @@ for n in "${DAFTAR[@]}"; do
   REF=$(echo "$INFO" | jq -r '.headRefName')
   PEMILIK_HEAD=$(echo "$INFO" | jq -r '.headRepositoryOwner.login // empty')
   echo "--- PR #$n oleh $AUTHOR (head: $PEMILIK_HEAD:$REF)"
+
+  if ! akun_ada "$AUTHOR"; then
+    echo "    akun penulis tidak ada di GitHub, PR ditutup"
+    komentar "$n" "PR ini ditutup karena akun GitHub \`$AUTHOR\` tidak ditemukan. Klaim hanya bisa diajukan dari akun yang benar-benar ada."
+    gh pr close "$n" >/dev/null 2>&1 || true
+    continue
+  fi
 
   if ! git fetch -q origin "pull/$n/head" 2>/dev/null; then
     echo "    gagal mengambil head, dilewati"
