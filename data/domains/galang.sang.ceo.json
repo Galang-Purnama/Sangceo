@@ -1,0 +1,9 @@
+{
+  "domain": "sang.ceo",
+  "subdomain": "galang",
+  "owner": "Galang-Purnama",
+  "records": {
+    "A": "89.106.73.11"
+  },
+  "proxy": true
+}
