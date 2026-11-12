@@ -1,9 +1,0 @@
-{
-  "domain": "sang.ceo",
-  "subdomain": "galang",
-  "owner": "Galang-Purnama",
-  "records": {
-    "CNAME": "cname.vercel-dns.com"
-  },
-  "proxy": true
-}
